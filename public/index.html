@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chatbot</title>
+<style>
+  body {
+    font-family: "Segoe UI", sans-serif;
+    background: #f2f2f2;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
+
+  .chat-container {
+    width: 400px;
+    max-width: 90%;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .chat-header {
+    background: #4a90e2;
+    color: #fff;
+    padding: 15px;
+    font-weight: bold;
+    text-align: center;
+  }
+
+  #chat {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    background: #f9f9f9;
+  }
+
+  .message {
+    margin: 10px 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .message.user {
+    align-items: flex-end;
+  }
+
+  .message.bot {
+    align-items: flex-start;
+  }
+
+  .bubble {
+    max-width: 70%;
+    padding: 10px 15px;
+    border-radius: 20px;
+    word-wrap: break-word;
+  }
+
+  .user .bubble {
+    background: #4a90e2;
+    color: #fff;
+    border-bottom-right-radius: 0;
+  }
+
+  .bot .bubble {
+    background: #e5e5ea;
+    color: #000;
+    border-bottom-left-radius: 0;
+  }
+
+  .input-container {
+    display: flex;
+    border-top: 1px solid #ddd;
+  }
+
+  .input-container textarea {
+    flex: 1;
+    border: none;
+    padding: 10px;
+    resize: none;
+    font-family: inherit;
+    font-size: 14px;
+    outline: none;
+  }
+
+  .input-container button {
+    padding: 0 20px;
+    border: none;
+    background: #4a90e2;
+    color: #fff;
+    cursor: pointer;
+    font-weight: bold;
+  }
+
+  .input-container button:disabled {
+    background: #a0c4ff;
+    cursor: default;
+  }
+</style>
+</head>
+<body>
+
+<div class="chat-container">
+  <div class="chat-header">Chatbot</div>
+  <div id="chat"></div>
+  
+  <div class="input-container">
+    <textarea id="input" rows="2" placeholder="Type a message..."></textarea>
+    <button id="sendBtn">Send</button>
+    <button id="resetBtn" style="margin-left:10px;">Reset Chat</button>
+
+  </div>
+  
+</div>
+
+<script>
+const chat = document.getElementById("chat");
+const input = document.getElementById("input");
+const sendBtn = document.getElementById("sendBtn");
+const resetBtn = document.getElementById("resetBtn");
+
+
+async function sendMessage() {
+  const message = input.value.trim();
+  if (!message) return;
+
+  addMessage("user", message);
+  input.value = "";
+  sendBtn.disabled = true;
+
+  // Tampilkan loading
+  const loadingDiv = addMessage("bot", "Bot is typing...", true);
+
+  try {
+    const res = await fetch("/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message })
+    });
+
+    const data = await res.json();
+    loadingDiv.querySelector(".bubble").textContent = data.reply;
+
+  } catch (err) {
+    loadingDiv.querySelector(".bubble").textContent = "Error connecting to server.";
+  } finally {
+    sendBtn.disabled = false;
+  }
+}
+
+// modifikasi addMessage untuk return div
+function addMessage(sender, text, isLoading = false) {
+  const div = document.createElement("div");
+  div.className = `message ${sender}`;
+  div.innerHTML = `<div class="bubble">${text}</div>`;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  return div; // kembalikan div agar bisa update loading
+}
+
+sendBtn.addEventListener("click", sendMessage);
+input.addEventListener("keypress", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+resetBtn.addEventListener("click", async () => {
+  try {
+    await fetch("/reset", { method: "POST" });
+    chat.innerHTML = ""; // bersihkan chat di UI
+  } catch (err) {
+    console.error(err);
+  }
+});
+</script>
+
+</body>
+</html>
